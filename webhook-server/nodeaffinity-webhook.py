@@ -5,6 +5,7 @@ import base64
 import jsonpatch
 import multiprocessing
 import gunicorn.app.base
+import os
 
 admission_controller = Flask(__name__)
 
@@ -14,79 +15,29 @@ def pod_health():
     return "OK"
 
 
-@admission_controller.route('/validate/pods', methods=['POST'])
-def pod_webhook():
-    request_info = request.get_json()
-    admission_controller.logger.warning("mutate %s", request_info)
-    # admission_controller.logger.warning("validate %s", request_info)
-    # .get("nodeAffinity"):
-    return admission_response(True, "Allow because nodeAffinity exists")
-
-
 def admission_response(allowed, message):
     return jsonify({"response": {"allowed": allowed, "status": {"message": message}}})
 
 
-@admission_controller.route('/mutate/isolated-pods', methods=['POST'])
+@admission_controller.route('/mutate', methods=['POST'])
 def pod_webhook_mutate():
     request_info = request.get_json()
-    admission_controller.logger.warning("mutate %s", request_info)
-    return admission_response_patch(True, "Adding nodeSelector ", json_patch=jsonpatch.JsonPatch([
-        {
-            "op": "replace",
-            "path": "/spec/affinity",
-            "value": {
-                "nodeAffinity": {
-                    "requiredDuringSchedulingIgnoredDuringExecution": {
-                        "nodeSelectorTerms": [
-                            {
-                                "matchExpressions": [
-                                    {
-                                        "key": "ns-affinity",
-                                        "operator": "In",
-                                        "values": [
-                                            request_info["request"]["namespace"]
-                                        ]
-                                    }
-                                ]
-                            }
-                        ]
-                    }
-                }
-            }
-        }
-    ]))
+    containers = request_info['request']['object']['spec']['containers']
+
+    patches = []
+
+    for counter, container in enumerate(containers):
+        if container['image'].startswith('quay.io'):
+            patches.append({
+                'op': 'replace',
+                'path': f'/spec/containers/{counter}/image',
+                'value': container['image'].replace('quay.io', os.environ['DOCKER_REGISTRY'])
+            })
+
+    return admission_response_patch(True, "Adding nodeSelector ", json_patch=jsonpatch.JsonPatch(patches))
 
 
-@admission_controller.route('/mutate/enforced-pods', methods=['POST'])
-def pod_webhook_default_mutate():
-    request_info = request.get_json()
-    admission_controller.logger.warning("mutate %s", request_info)
-    return admission_response_patch(True, "Adding nodeSelector ", json_patch=jsonpatch.JsonPatch([
-        {
-            "op": "replace",
-            "path": "/spec/affinity",
-            "value": {
-                "nodeAffinity": {
-                    "requiredDuringSchedulingIgnoredDuringExecution": {
-                        "nodeSelectorTerms": [
-                            {
-                                "matchExpressions": [
-                                    {
-                                        "key": "ns-affinity",
-                                        "operator": "DoesNotExist"
-                                    }
-                                ]
-                            }
-                        ]
-                    }
-                }
-            }
-        }
-    ]))
-
-
-def admission_response_patch(allowed, message, json_patch):
+def admission_response_patch(allowed, message, json_patch: jsonpatch.JsonPatch):
     base64_patch = base64.b64encode(
         json_patch.to_string().encode("utf-8")).decode("utf-8")
     return jsonify({"response": {"allowed": allowed,
@@ -122,5 +73,5 @@ if __name__ == '__main__':
         'certfile': '/webhook-ssl/cert.pem',
         'workers': number_of_workers(),
     }
-
+    admission_controller.logger.info("Hello World!")
     StandaloneApplication(admission_controller, options).run()

@@ -38,11 +38,13 @@ spec:
     spec:
       containers:
         - name: webhook
-          image: jwalther/quay-away
+          image: jwalther/quay-away:latest
           imagePullPolicy: Always
           env:
             - name: PORT
               value: "443"
+            - name: DOCKER_REGISTRY
+              value: "hub.docker.com"
           volumeMounts:
             - name: webhook-ssl
               mountPath: /webhook-ssl

@@ -20,9 +20,7 @@ def pod_webhook():
     admission_controller.logger.warning("mutate %s", request_info)
     # admission_controller.logger.warning("validate %s", request_info)
     # .get("nodeAffinity"):
-    if request_info["request"]["object"]["spec"].get("affinity") and request_info["request"]["object"]["spec"]["affinity"].get("nodeAffinity"):
-        return admission_response(True, "Allow because nodeAffinity exists")
-    return admission_response(False, "Not allowed without nodeAffinity")
+    return admission_response(True, "Allow because nodeAffinity exists")
 
 
 def admission_response(allowed, message):

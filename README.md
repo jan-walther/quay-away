@@ -1,6 +1,6 @@
-# nodeaffinity-webhook
+# quay-away
 
-This project is an example of Kubernetes nodeAffinity enforcement based on the dynamic ValidatingWebhook and MutatingWebhook Ressources.
+This project showcases an example for air-gapped k8s installations. This especially replaces quay.io images with a registry of the users choice. Simply edit the `DOCKER_REGISTRY` variable in `webhook-base.yml` to your needs.
 
 ### Quickstart
 
@@ -16,17 +16,4 @@ kubectl apply -f webhook-configuration.yaml
 
 ### Usage
 
-Add a `nodeaffinity` label to your namespace with the following value:
-- `isolated` to isolate your pod on specific node
-- `enforced` to isolate your node on node not associated to specific namespace
-
-Add a `ns-affinity` label to your node(s) with a namespace name as value if you want to restrict this node(s) for this specific namespace
-
-
-### Hack
-
-you can build your own container based on the source in the `webhook-server` directory
-
-```bash
-docker build -t nodeaffinity-webhook webhook-server
-```
+Newly created Pods will now automatically be redirected from quay.io to your registry.

@@ -1,3 +1,5 @@
+from abc import ABC
+
 from flask import Flask, request, jsonify
 import base64
 import jsonpatch
@@ -15,6 +17,7 @@ def pod_health():
 @admission_controller.route('/validate/pods', methods=['POST'])
 def pod_webhook():
     request_info = request.get_json()
+    admission_controller.logger.warning("mutate %s", request_info)
     # admission_controller.logger.warning("validate %s", request_info)
     # .get("nodeAffinity"):
     if request_info["request"]["object"]["spec"].get("affinity") and request_info["request"]["object"]["spec"]["affinity"].get("nodeAffinity"):
@@ -29,7 +32,7 @@ def admission_response(allowed, message):
 @admission_controller.route('/mutate/isolated-pods', methods=['POST'])
 def pod_webhook_mutate():
     request_info = request.get_json()
-    # admission_controller.logger.warning("mutate %s", request_info)
+    admission_controller.logger.warning("mutate %s", request_info)
     return admission_response_patch(True, "Adding nodeSelector ", json_patch=jsonpatch.JsonPatch([
         {
             "op": "replace",
@@ -59,7 +62,8 @@ def pod_webhook_mutate():
 
 @admission_controller.route('/mutate/enforced-pods', methods=['POST'])
 def pod_webhook_default_mutate():
-    # admission_controller.logger.warning("mutate %s", request_info)
+    request_info = request.get_json()
+    admission_controller.logger.warning("mutate %s", request_info)
     return admission_response_patch(True, "Adding nodeSelector ", json_patch=jsonpatch.JsonPatch([
         {
             "op": "replace",
@@ -93,8 +97,7 @@ def admission_response_patch(allowed, message, json_patch):
                                  "patch": base64_patch}})
 
 
-class StandaloneApplication(gunicorn.app.base.BaseApplication):
-
+class StandaloneApplication(gunicorn.app.base.BaseApplication, ABC):
     def __init__(self, app, options=None):
         self.options = options or {}
         self.application = app

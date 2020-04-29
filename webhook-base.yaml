@@ -43,8 +43,8 @@ spec:
           env:
             - name: PORT
               value: "443"
-            - name: DOCKER_REGISTRY
-              value: "hub.docker.com"
+            - name: REGISTRY_REGEX
+              value: "^quay\\.io/.*/(.*)$|local-registry.de/quay/\\1"
           volumeMounts:
             - name: webhook-ssl
               mountPath: /webhook-ssl

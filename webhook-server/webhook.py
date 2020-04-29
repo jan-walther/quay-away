@@ -6,6 +6,7 @@ import jsonpatch
 import multiprocessing
 import gunicorn.app.base
 import os
+import re
 
 admission_controller = Flask(__name__)
 
@@ -24,15 +25,26 @@ def pod_webhook_mutate():
     request_info = request.get_json()
     containers = request_info['request']['object']['spec']['containers']
 
+    replacements = os.environ.get("REGISTRY_REGEX", '')
+    replacements = replacements.split(' ') if replacements else []
+
     patches = []
 
     for counter, container in enumerate(containers):
-        if container['image'].startswith('quay.io'):
-            patches.append({
-                'op': 'replace',
-                'path': f'/spec/containers/{counter}/image',
-                'value': container['image'].replace('quay.io', os.environ['DOCKER_REGISTRY'])
-            })
+        for r in replacements:
+            split = r.split('|')
+            search = split[0]
+            replace = split[1]
+
+            new_image = re.sub(search, replace, container['image'])
+
+            if new_image != container['image']:
+                patches.append({
+                    'op': 'replace',
+                    'path': f'/spec/containers/{counter}/image',
+                    'value': new_image
+                })
+                break
 
     return admission_response_patch(True, "Adding nodeSelector ", json_patch=jsonpatch.JsonPatch(patches))
 

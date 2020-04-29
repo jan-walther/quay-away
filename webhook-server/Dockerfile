@@ -5,4 +5,4 @@ FROM python:3-onbuild
 EXPOSE 443
 
 # run the command
-CMD ["python", "./nodeaffinity-webhook.py"]
+CMD ["python", "./webhook.py"]
